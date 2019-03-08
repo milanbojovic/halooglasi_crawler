@@ -28,7 +28,7 @@ public class HaloOglasiCrawler
 			String query = "https://www.halooglasi.com/nekretnine/izdavanje-stanova?grad_id_l-lokacija_id_l-mikrolokacija_id_l=40574%2C40787&cena_d_to=400&cena_d_unit=4&broj_soba_order_i_from=3&oglasivac_nekretnine_id_l=387237&sa_fotografijom=true";
 			
 			LivingAreaSearch livingAreaSearch = new LivingAreaSearch(driver, query);
-			Smtp2GoEmailClient emaiClient = new Smtp2GoEmailClient(	"milan.bojovic@braintribe.com", "9okUD5F1oKSL");
+			Smtp2GoEmailClient emaiClient = new Smtp2GoEmailClient(	"USERNAME", "PASS");
 			
 	        livingAreaSearch.executeQueryAndHandleResults(emaiClient);
 		} catch (Exception e) {
