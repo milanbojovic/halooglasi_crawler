@@ -2,9 +2,7 @@ package com.halooglasi.util;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
@@ -14,7 +12,6 @@ import org.openqa.selenium.WebElement;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 
@@ -22,10 +19,12 @@ public class LivingAreaSearch {
 
     private WebDriver driver;
     private String url = "https://www.halooglasi.com/nekretnine";
-    private List<Advertisement> addvertisements = new ArrayList<Advertisement>();
+    private List<Advertisement> allAddvertisements = new ArrayList<Advertisement>();
+    private List<Advertisement> newAddvertisements = new ArrayList<Advertisement>();
     private MongoClient mongoClient;
     private DB database;
     private DBCollection collection;
+    private int pageCnt = 0;
     
     
     public LivingAreaSearch(WebDriver driver, String request) {
@@ -42,13 +41,18 @@ public class LivingAreaSearch {
         }
     }
 
-    public void executeQueryAndHandleResults(Smtp2GoEmailClient emailClient) {
+    public void executeQueryAndHandleResults(EmailClient emailClient) throws InterruptedException {
     	WebElement nextPage = null;
-    	
-    	do {
+
+		Thread.sleep(30000);
+		WebElement cookieAcceptBtn = driver.findElement(By.className("cookie-policy-btn"));
+		cookieAcceptBtn.click();
+
+		do {
     		WebElement footerElement = driver.findElement(By.id("pager-1"));
     		if (footerElement.findElements(By.linkText("Sledeća »")).size() > 0) {
     			nextPage = footerElement.findElement(By.linkText("Sledeća »"));
+				Thread.sleep(1000);
     			traversePage();
     			
     			//Scroll to bottom
@@ -61,13 +65,22 @@ public class LivingAreaSearch {
     			traversePage();
     		}
 		} while (nextPage != null);
-    	
-    	emailClient.sendEmail(addvertisements);
-    	System.out.println("Execution compleeted");
-    }
+
+		for(Advertisement advertisement : allAddvertisements) {
+			if (!dbHasAdvertisement(advertisement)) {
+				saveAdvertisement(advertisement.toDBObject());
+				newAddvertisements.add(advertisement);
+			}
+		}
+
+		System.out.println("All advertisements: " + allAddvertisements.size());
+		System.out.println("New advertisements: " + newAddvertisements.size());
+		emailClient.sendEmail(new String[]{"porodicausrcu4@gmail.com", "marjan.jankovich@gmail.com"}, "Novi oglasi na za vas kriterijum", newAddvertisements);
+		System.out.println("Execution compleeted");
+	}
     
     private void traversePage() {
-    	System.out.println("Traversing page");
+    	System.out.println("Traversing page " + ++pageCnt);
         WebElement listParent = driver.findElement(By.id("ad-list-3"));
         
         if(listParent != null) {
@@ -84,11 +97,7 @@ public class LivingAreaSearch {
 				WebElement titleLinkElem = titleElem.findElement(By.tagName("a"));
 				
 				Advertisement advertisement = new Advertisement(id, price, titleLinkElem.getText(), titleLinkElem.getAttribute("href"));
-				
-				if (!dbHasAdvertisement(advertisement)) {
-					saveAdvertisement(advertisement.toDBObject());
-					addvertisements.add(advertisement);					
-				}
+				allAddvertisements.add(advertisement);
 				System.out.println("Elem: \n" + advertisement.toString());
         	}
         }
@@ -103,7 +112,7 @@ public class LivingAreaSearch {
     	query.put("_id", advertisement.getId());
     	
     	DBObject result = collection.findOne(query);
-    	
+
     	return (result != null) ? true : false;
     }
 }
